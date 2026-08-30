@@ -1,0 +1,11 @@
+﻿__pycache__/
+*.pyc
+.env
+node_modules/
+dist/
+.venv/
+*.db
+code_map.json
+dependency_graph.json
+chroma_db/
+drift.db
