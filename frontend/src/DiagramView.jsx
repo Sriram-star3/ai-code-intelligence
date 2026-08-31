@@ -1,23 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import mermaid from "mermaid";
 
-mermaid.initialize({ startOnLoad: false, theme: "default" });
+mermaid.initialize({ startOnLoad: false, theme: "dark" });
 
 function DiagramView() {
-  const [mermaidSyntax, setMermaidSyntax] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [fileCount, setFileCount] = useState(null);
-  const [uploadedName, setUploadedName] = useState(null);
-  const diagramRef = useRef(null);
+  const [mermaidSyntax, setMermaidSyntax]   = useState(null);
+  const [error, setError]                   = useState(null);
+  const [loading, setLoading]               = useState(false);
+  const [fileCount, setFileCount]           = useState(null);
+  const [uploadedName, setUploadedName]     = useState(null);
+  const diagramRef                          = useRef(null);
 
   const runDiagram = async (fetchFn, label) => {
-    setLoading(true);
-    setError(null);
-    setMermaidSyntax(null);
-    setFileCount(null);
-    setUploadedName(label || null);
-
+    setLoading(true); setError(null); setMermaidSyntax(null);
+    setFileCount(null); setUploadedName(label || null);
     try {
       const data = await fetchFn();
       setMermaidSyntax(data.mermaid);
@@ -46,7 +42,6 @@ function DiagramView() {
       if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Failed"); }
       return res.json();
     }, file.name);
-    // Reset input so same file can be re-uploaded
     e.target.value = "";
   };
 
@@ -65,66 +60,113 @@ function DiagramView() {
   }, [mermaidSyntax]);
 
   return (
-    <div className="bg-white shadow-sm rounded-xl border border-gray-200 p-7 w-full max-w-4xl space-y-5">
-      {/* Card header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-800">Module Dependency Graph</h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Visual map of file-to-file imports. Load the deployed project or upload any Python codebase as a <span className="font-medium">.zip</span>.
-          </p>
-        </div>
-        {/* Action buttons */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleLoadProject}
-            disabled={loading}
-            className="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 transition-colors"
-          >
-            {loading && !uploadedName ? "Loading…" : "This Project"}
-          </button>
+    <div className="w-full max-w-5xl space-y-4">
 
-          <label className={`flex items-center gap-1.5 bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer ${loading ? "opacity-50 pointer-events-none" : ""}`}>
-            {loading && uploadedName ? "Uploading…" : "Upload .zip"}
-            <input
-              type="file"
-              accept=".zip"
-              className="hidden"
-              onChange={handleZipUpload}
+      {/* Card */}
+      <div className="rounded-2xl overflow-hidden" style={{background:"#111827",border:"1px solid rgba(255,255,255,0.08)"}}>
+
+        {/* Card header */}
+        <div className="flex items-center justify-between px-6 py-4" style={{borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
+          <div>
+            <h2 className="text-base font-bold text-white">Module Dependency Graph</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Visual map of file-to-file imports. Load this project or upload any Python codebase as a <span className="text-indigo-400 font-medium">.zip</span>.
+            </p>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleLoadProject}
               disabled={loading}
-            />
-          </label>
-        </div>
-      </div>
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-40"
+              style={{background:"linear-gradient(135deg,#6366f1,#4f46e5)",color:"white",boxShadow:"0 2px 12px rgba(99,102,241,0.35)"}}
+            >
+              {loading && !uploadedName ? (
+                <>
+                  <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Loading…
+                </>
+              ) : (
+                <>🔍 This Project</>
+              )}
+            </button>
 
-      {/* Uploaded file badge */}
-      {uploadedName && mermaidSyntax && (
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <span className="bg-gray-100 border border-gray-200 px-2 py-0.5 rounded font-mono">{uploadedName}</span>
-          {fileCount !== null && <span>{fileCount} Python files mapped</span>}
+            <label
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer ${loading ? "opacity-40 pointer-events-none" : "hover:brightness-110"}`}
+              style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",color:"#d1d5db"}}
+            >
+              {loading && uploadedName ? (
+                <>
+                  <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Uploading…
+                </>
+              ) : (
+                <>📦 Upload .zip</>
+              )}
+              <input type="file" accept=".zip" className="hidden" onChange={handleZipUpload} disabled={loading} />
+            </label>
+          </div>
         </div>
-      )}
 
-      {error && (
-        <div className="bg-red-50 text-red-700 text-sm p-3 rounded-lg border border-red-200">
-          {error}
-        </div>
-      )}
-
-      {/* Diagram area */}
-      <div
-        ref={diagramRef}
-        className={`overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 p-4 transition-all ${
-          mermaidSyntax ? "min-h-0" : "min-h-64 flex items-center justify-center"
-        }`}
-      >
-        {!mermaidSyntax && !error && (
-          <p className="text-sm text-gray-400 select-none">
-            {loading
-              ? "Generating diagram\u2026"
-              : 'Click \u201cThis Project\u201d or upload a .zip to visualize a codebase.'}
-          </p>
+        {/* Uploaded badge */}
+        {uploadedName && mermaidSyntax && (
+          <div className="px-6 py-2 flex items-center gap-2" style={{borderBottom:"1px solid rgba(255,255,255,0.06)",background:"rgba(99,102,241,0.06)"}}>
+            <span className="text-sm">📦</span>
+            <span className="text-xs font-mono text-indigo-300">{uploadedName}</span>
+            {fileCount !== null && (
+              <span className="text-xs px-2 py-0.5 rounded-full text-indigo-400" style={{background:"rgba(99,102,241,0.2)"}}>
+                {fileCount} Python files
+              </span>
+            )}
+          </div>
         )}
+
+        {/* Error */}
+        {error && (
+          <div className="mx-6 mt-4 rounded-xl px-4 py-3 text-sm flex items-start gap-2" style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",color:"#fca5a5"}}>
+            <span className="shrink-0 mt-0.5">⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Diagram area */}
+        <div
+          ref={diagramRef}
+          className={`overflow-x-auto p-6 transition-all ${
+            mermaidSyntax ? "" : "flex items-center justify-center"
+          }`}
+          style={{minHeight: mermaidSyntax ? "auto" : "320px", background:"#0d1117"}}
+        >
+          {!mermaidSyntax && !error && (
+            <div className="text-center space-y-3">
+              <div className="text-5xl">🗺️</div>
+              <div>
+                <p className="text-sm font-semibold text-gray-400">
+                  {loading ? "Generating diagram…" : "No diagram loaded yet"}
+                </p>
+                <p className="text-xs text-gray-600 mt-1">
+                  {loading ? "Analysing imports and building graph…" : 'Click "This Project" or upload a .zip to visualize a codebase'}
+                </p>
+              </div>
+              {loading && (
+                <div className="flex justify-center">
+                  <svg className="animate-spin w-6 h-6 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
