@@ -79,10 +79,10 @@ def summarize(req: SummarizeRequest):
         )
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=300,
+        max_tokens=200,
         messages=[{
             "role": "user",
-            "content": f"Explain what this Python function does, step by step:\n\n{source_code}"
+            "content": f"In 3-4 sentences, explain what this Python function does:\n\n{source_code}"
         }]
     )
     return {

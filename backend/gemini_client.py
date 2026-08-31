@@ -26,7 +26,7 @@ class GeminiMessages:
         prompt = "\n".join(m["content"] for m in messages)
 
         response = self._client.models.generate_content(
-            model="gemini-3.6-flash",
+            model="gemini-2.0-flash-lite",
             contents=prompt,
         )
 
