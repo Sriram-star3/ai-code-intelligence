@@ -1,9 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import os
+import zipfile
+import tempfile
+import shutil
 
 from parser import parse_python_file, extract_source_lines, walk_repo, resolve_local_imports, hash_function_code
 from claude_client import client
@@ -179,6 +182,42 @@ def get_diagram():
     graph = resolve_local_imports(code_map)
     mermaid_code = build_mermaid_graph(graph)
     return {"mermaid": mermaid_code}
+
+
+@app.post("/diagram/upload")
+async def diagram_upload(file: UploadFile = File(...)):
+    if not file.filename.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Only .zip files are supported.")
+
+    tmp_dir = tempfile.mkdtemp()
+    try:
+        # Save uploaded zip to temp dir
+        zip_path = os.path.join(tmp_dir, "upload.zip")
+        contents = await file.read()
+        with open(zip_path, "wb") as f:
+            f.write(contents)
+
+        # Extract zip
+        extract_dir = os.path.join(tmp_dir, "extracted")
+        os.makedirs(extract_dir)
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            zf.extractall(extract_dir)
+
+        # If zip contains a single top-level folder, descend into it
+        entries = os.listdir(extract_dir)
+        if len(entries) == 1 and os.path.isdir(os.path.join(extract_dir, entries[0])):
+            extract_dir = os.path.join(extract_dir, entries[0])
+
+        # Run the same pipeline as /diagram
+        code_map = walk_repo(extract_dir)
+        if not code_map:
+            raise HTTPException(status_code=422, detail="No Python files found in the uploaded zip.")
+        graph = resolve_local_imports(code_map)
+        mermaid_code = build_mermaid_graph(graph)
+        return {"mermaid": mermaid_code, "file_count": len(code_map)}
+
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 # Mount static assets (JS/CSS/images) and serve index.html for all other routes.

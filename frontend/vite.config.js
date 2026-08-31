@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       '/summarize': 'http://localhost:8000',
       '/diagram':   'http://localhost:8000',
+      '/diagram/upload': 'http://localhost:8000',
       '/index':     'http://localhost:8000',
       '/related':   'http://localhost:8000',
       '/docs-check':'http://localhost:8000',
