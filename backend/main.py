@@ -186,7 +186,7 @@ def get_diagram():
 
 @app.post("/diagram/upload")
 async def diagram_upload(file: UploadFile = File(...)):
-    if not file.filename.endswith(".zip"):
+    if not file.filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="Only .zip files are supported.")
 
     tmp_dir = tempfile.mkdtemp()
