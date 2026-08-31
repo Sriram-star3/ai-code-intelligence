@@ -5,6 +5,10 @@ load_dotenv()
 
 PROVIDER = os.getenv("AI_PROVIDER", "mock").lower()  # "mock" | "claude" | "gemini"
 
+# Debug: print env state at startup (safe — only shows key presence, not value)
+print(f"[AI] Provider: {PROVIDER}")
+print(f"[AI] GEMINI_API_KEY set: {bool(os.getenv('GEMINI_API_KEY'))}")
+
 if PROVIDER == "gemini":
     from gemini_client import GeminiAnthropicShim
     client = GeminiAnthropicShim()
