@@ -28,6 +28,7 @@ FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"
 class SummarizeRequest(BaseModel):
     file_path: str
     function_name: str
+    file_content: str | None = None  # if provided, skip filesystem read
 
 
 class RelatedRequest(BaseModel):
@@ -42,19 +43,40 @@ def health():
 
 @app.post("/summarize")
 def summarize(req: SummarizeRequest):
-    parsed = parse_python_file(req.file_path)
-    target = next(
-        (f for f in parsed["functions"] if f["name"] == req.function_name),
-        None
-    )
-    if not target:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Function '{req.function_name}' not found in {req.file_path}"
+    if req.file_content:
+        # Parse from uploaded content instead of filesystem
+        import tempfile, os as _os
+        with tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w", encoding="utf-8") as tmp:
+            tmp.write(req.file_content)
+            tmp_path = tmp.name
+        try:
+            parsed = parse_python_file(tmp_path)
+            target = next(
+                (f for f in parsed["functions"] if f["name"] == req.function_name),
+                None
+            )
+            if not target:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Function '{req.function_name}' not found in uploaded file"
+                )
+            source_code = extract_source_lines(tmp_path, target["start_line"], target["end_line"])
+        finally:
+            _os.unlink(tmp_path)
+    else:
+        parsed = parse_python_file(req.file_path)
+        target = next(
+            (f for f in parsed["functions"] if f["name"] == req.function_name),
+            None
         )
-    source_code = extract_source_lines(
-        req.file_path, target["start_line"], target["end_line"]
-    )
+        if not target:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Function '{req.function_name}' not found in {req.file_path}"
+            )
+        source_code = extract_source_lines(
+            req.file_path, target["start_line"], target["end_line"]
+        )
     response = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=300,

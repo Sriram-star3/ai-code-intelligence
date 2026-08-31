@@ -8,25 +8,68 @@ const TABS = [
 
 function App() {
   const [tab, setTab] = useState("summarize");
-  const [filePath, setFilePath] = useState("test_target.py");
-  const [functionName, setFunctionName] = useState("add");
+
+  // File upload state
+  const [uploadedFile, setUploadedFile] = useState(null);   // { name, content }
+  const [functions, setFunctions] = useState([]);           // parsed function names
+  const [functionName, setFunctionName] = useState("");
+
+  // Legacy path-based state (still works for server files)
+  const [filePath, setFilePath] = useState("");
+
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Parse function names out of uploaded Python file (simple regex)
+  const extractFunctions = (text) => {
+    const matches = [...text.matchAll(/^def\s+(\w+)\s*\(/gm)];
+    return matches.map((m) => m[1]);
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target.result;
+      const fns = extractFunctions(content);
+      setUploadedFile({ name: file.name, content });
+      setFunctions(fns);
+      setFunctionName(fns[0] || "");
+      setResult(null);
+      setError(null);
+      setFilePath("");
+    };
+    reader.readAsText(file);
+  };
+
+  const handleClearFile = () => {
+    setUploadedFile(null);
+    setFunctions([]);
+    setFunctionName("");
+    setResult(null);
+    setError(null);
+  };
+
   const handleSummarize = async () => {
+    if (!functionName.trim()) {
+      setError("Please enter a function name.");
+      return;
+    }
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
+      const body = uploadedFile
+        ? { file_path: uploadedFile.name, function_name: functionName, file_content: uploadedFile.content }
+        : { file_path: filePath, function_name: functionName };
+
       const response = await fetch("/summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          file_path: filePath,
-          function_name: functionName,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -85,35 +128,76 @@ function App() {
           <DiagramView />
         ) : (
           <div className="bg-white shadow-sm rounded-xl border border-gray-200 p-7 w-full max-w-lg space-y-5">
+
+            {/* File input */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
-                File Path
+                Python File
               </label>
-              <input
-                type="text"
-                value={filePath}
-                onChange={(e) => setFilePath(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g. test_target.py"
-              />
+              {uploadedFile ? (
+                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                  <span className="text-sm text-blue-700 font-medium truncate">{uploadedFile.name}</span>
+                  <button
+                    onClick={handleClearFile}
+                    className="ml-3 text-xs text-blue-400 hover:text-red-500 transition-colors shrink-0"
+                  >
+                    ✕ Clear
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="flex items-center justify-center w-full border-2 border-dashed border-gray-300 rounded-lg px-3 py-4 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                    <span className="text-sm text-gray-500">
+                      Click to upload a <span className="font-medium text-blue-600">.py file</span> from your computer
+                    </span>
+                    <input
+                      type="file"
+                      accept=".py"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                  </label>
+                  <p className="text-xs text-gray-400 text-center">— or use a server file path below —</p>
+                  <input
+                    type="text"
+                    value={filePath}
+                    onChange={(e) => setFilePath(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g. test_target.py"
+                  />
+                </div>
+              )}
             </div>
 
+            {/* Function selector — dropdown if uploaded, text if manual */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
                 Function Name
               </label>
-              <input
-                type="text"
-                value={functionName}
-                onChange={(e) => setFunctionName(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g. add"
-              />
+              {functions.length > 0 ? (
+                <select
+                  value={functionName}
+                  onChange={(e) => setFunctionName(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                >
+                  {functions.map((fn) => (
+                    <option key={fn} value={fn}>{fn}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={functionName}
+                  onChange={(e) => setFunctionName(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g. add"
+                />
+              )}
             </div>
 
             <button
               onClick={handleSummarize}
-              disabled={loading}
+              disabled={loading || (!uploadedFile && !filePath)}
               className="w-full bg-blue-600 text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 transition-colors"
             >
               {loading ? "Summarizing…" : "Summarize"}
